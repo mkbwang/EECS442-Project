@@ -8,6 +8,7 @@ test/
 .ipynb_checkpoints/
 .~lock.humpback-whale-identification-publicleaderboard.csv#
 .~lock.train.csv#
+data/
 
 
 

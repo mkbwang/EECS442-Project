@@ -3,7 +3,6 @@ import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-import cv2
 from keras.preprocessing import image
 from keras.applications.imagenet_utils import preprocess_input
 from sklearn.preprocessing import LabelEncoder
@@ -24,9 +23,9 @@ def prepareImages(train, shape, path):
         
         #load images into images of size 100x100x3
         img = image.load_img(os.path.join(path, fig), target_size=(100, 100, 3))
+        # print(img.shape)
         x = image.img_to_array(img)
         x = preprocess_input(x)
-
         x_train[count] = x
         if (count%500 == 0):
             print("Processing image: ", count+1, ", ", fig)
@@ -40,13 +39,14 @@ if __name__=="__main__":
     train = pd.read_csv('subset_train.csv')
     imgnames = train['Image'].tolist()
 
-    x_train = prepareImages(train, train.shape[0], "train")
+    # x_train = prepareImages(train, train.shape[0], "train")
+    x_train = np.load('data/train_processed.npy')
     x_train = x_train/255.0
     
     X_train = train.drop(labels=['Id'], axis=1)
     y_train = train["Id"]
 
-    np.save('data/train_processed.npy', x_train)
+    # np.save('data/train_processed_224.npy', x_train)
 
     label_encoder = LabelEncoder()
 
@@ -55,10 +55,27 @@ if __name__=="__main__":
 
     y_train = to_categorical(y_train, num_classes = 805)
 
+    # Introduce data augmentation
+    # datagen = ImageDataGenerator(
+    #     featurewise_center=False,  # set input mean to 0 over the dataset
+    #     samplewise_center=False,  # set each sample mean to 0
+    #     featurewise_std_normalization=False,  # divide inputs by std of the dataset
+    #     samplewise_std_normalization=False,  # divide each input by its std
+    #     zca_whitening=False,  # apply ZCA whitening
+    #     rotation_range=10,  # randomly rotate images in the range (degrees, 0 to 180)
+    #     zoom_range = 0.1, # Randomly zoom image 
+    #     width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+    #     height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+    #     horizontal_flip=False,  # randomly flip images
+    #     vertical_flip=False)  # randomly flip images
+
+
+    # datagen.fit(x_train)
+
     # initialize the network
     model = Sequential()
 
-    model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu', input_shape = (100,100,3)))
+    model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu', input_shape = (100, 100, 3)))
     model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu'))
     model.add(MaxPool2D(pool_size = (2,2)))
     model.add(Dropout(0.25))
@@ -90,12 +107,15 @@ if __name__=="__main__":
     # compile model
     model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
-    epochs = 80  # for better result increase the epochs
+    epochs = 100  # for better result increase the epochs
     batch_size = 500
 
     # Fit the neural net
     history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2, callbacks=[learning_rate_reduction])
-
+    # history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
+    #                           epochs=70, verbose = 2, 
+    #                           steps_per_epoch=x_train.shape[0] // batch_size,
+    #                           callbacks=[learning_rate_reduction])
 
     # Check test accuracy
     test = pd.read_csv('subset_test.csv')
@@ -106,10 +126,10 @@ if __name__=="__main__":
     x_test = prepareImages(test_data, test_data.shape[0], "train")
     x_test = x_test/255.0
 
-    predictions = model.predict(np.array(x_test), verbose=1)
+    predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions.npy", predictions)
+    np.save("data/Predictions_1.npy", predictions)
     for i, pred in enumerate(predictions):
         test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
     
-    test_data.to_csv("Predicted_labels.csv", index=False)
+    test_data.to_csv("data/Predicted_labels_1.csv", index=False)
