@@ -1,0 +1,13 @@
+*.csv
+*.pdf
+train/
+test/
+*.pem
+*.zip
+*.com
+.ipynb_checkpoints/
+.~lock.humpback-whale-identification-publicleaderboard.csv#
+.~lock.train.csv#
+
+
+
