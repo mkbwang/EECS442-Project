@@ -19,13 +19,13 @@ import pickle
 
 def prepareImages(train, shape, path):
     
-    x_train = np.zeros((shape, 100, 100, 3))
+    x_train = np.zeros((shape, 224, 224, 3))
     count = 0
     
     for fig in train['Image']:
         
         #load images into images of size 100x100x3
-        img = image.load_img(os.path.join(path, fig), target_size=(100, 100, 3))
+        img = image.load_img(os.path.join(path, fig), target_size=(224, 224, 3))
         # print(img.shape)
         x = image.img_to_array(img)
         x = preprocess_input(x)
@@ -86,28 +86,28 @@ if __name__=="__main__":
     
 
     # if you want to use a simple network, uncomment the code below
-    # model = Sequential()
+    model = Sequential()
 
-    # model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu', input_shape = (100, 100, 3)))
-    # model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu'))
-    # model.add(MaxPool2D(pool_size = (2,2)))
-    # model.add(Dropout(0.25))
+    model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu', input_shape = (224, 224, 3)))
+    model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu'))
+    model.add(MaxPool2D(pool_size = (2,2)))
+    model.add(Dropout(0.25))
 
-    # model.add(Conv2D(filters = 32, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
-    # model.add(Conv2D(filters = 32, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
-    # model.add(MaxPool2D(pool_size = (2,2), strides=(2,2)))
-    # model.add(Dropout(0.25))
+    model.add(Conv2D(filters = 32, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
+    model.add(Conv2D(filters = 32, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
+    model.add(MaxPool2D(pool_size = (2,2), strides=(2,2)))
+    model.add(Dropout(0.25))
 
-    # model.add(Conv2D(filters = 64, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
-    # model.add(Conv2D(filters = 64, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
-    # model.add(MaxPool2D(pool_size = (2,2), strides=(2,2)))
-    # model.add(Dropout(0.25))
+    model.add(Conv2D(filters = 64, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
+    model.add(Conv2D(filters = 64, kernel_size = (3,3), padding = 'Same', activation = 'relu'))
+    model.add(MaxPool2D(pool_size = (2,2), strides=(2,2)))
+    model.add(Dropout(0.25))
 
-    # # fully connected
-    # model.add(Flatten())
-    # model.add(Dense(256, activation = 'relu'))
-    # model.add(BatchNormalization())
-    # model.add(Dense(y_train.shape[1], activation = "softmax"))
+    # fully connected
+    model.add(Flatten())
+    model.add(Dense(256, activation = 'relu'))
+    model.add(BatchNormalization())
+    model.add(Dense(y_train.shape[1], activation = "softmax"))
 
     optimizer = Adam(lr = 0.001, beta_1 = 0.9, beta_2 = 0.999)
 
@@ -121,7 +121,7 @@ if __name__=="__main__":
     model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
     epochs = 100  # for better result increase the epochs
-    batch_size = 600
+    batch_size = 300
 
     # model = load_model('data/model_0.h5')
 
@@ -152,8 +152,8 @@ if __name__=="__main__":
 
     predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions_VGG.npy", predictions)# save the raw predicted probabilities
+    np.save("data/Predictions.npy", predictions)# save the raw predicted probabilities
     for i, pred in enumerate(predictions):
         test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
     
-    test_data.to_csv("data/Predicted_labels_VGG.csv", index=False)# save output csv file
+    test_data.to_csv("data/Predicted_labels.csv", index=False)# save output csv file
