@@ -39,8 +39,10 @@ def prepareImages(train, shape, path):
 
 
 if __name__=="__main__":
+
+    # load training images and their ids
     train = pd.read_csv('subset_train.csv')
-    imgnames = train['Image'].tolist()
+    # imgnames = train['Image'].tolist()
 
     x_train = prepareImages(train, train.shape[0], "train")
     # x_train = np.load('data/train_processed.npy')
@@ -71,17 +73,19 @@ if __name__=="__main__":
     #     height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
     #     horizontal_flip=False,  # randomly flip images
     #     vertical_flip=False)  # randomly flip images
-
-    model_vgg16_conv = VGG16(weights='imagenet', include_top=False)
-    input = Input(shape=(100,100,3),name = 'image_input')
-    output_vgg16_conv = model_vgg16_conv(input)
-    x = Flatten(name='flatten')(output_vgg16_conv)
-    x = Dense(805, activation='softmax', name='predictions')(x)
-    my_model = Model(input=input, output=x)
-
     # datagen.fit(x_train)
 
-    # initialize the network
+    # if you want to use VGG, uncomment the code below
+    # model_vgg16_conv = VGG16(weights='imagenet', include_top=False)
+    # input = Input(shape=(100,100,3),name = 'image_input')
+    # output_vgg16_conv = model_vgg16_conv(input)
+    # x = Flatten(name='flatten')(output_vgg16_conv)
+    # x = Dense(805, activation='softmax', name='predictions')(x)
+    # model = Model(input=input, output=x)
+
+    
+
+    # if you want to use a simple network, uncomment the code below
     # model = Sequential()
 
     # model.add(Conv2D(filters = 16, kernel_size = (5,5), padding = 'Same', activation = 'relu', input_shape = (100, 100, 3)))
@@ -114,21 +118,24 @@ if __name__=="__main__":
                                             min_lr=0.00001)
     
     # # compile model
-    my_model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
+    model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
     epochs = 100  # for better result increase the epochs
     batch_size = 600
 
     # model = load_model('data/model_0.h5')
 
-    # Fit the neural net
-    history = my_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2, callbacks=[learning_rate_reduction])
+    # Fit the neural net (without data augmentation)
+    history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2, callbacks=[learning_rate_reduction])
+    
+    # fit the neural net with data augmentation
     # history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
     #                           epochs=100, verbose = 2, 
     #                           steps_per_epoch=x_train.shape[0] // batch_size,
     #                           callbacks=[learning_rate_reduction])
 
     # Check test accuracy
+    # load test images and their labels
     test = pd.read_csv('subset_test.csv')
 
     test_data = pd.DataFrame(list(test['Image']), columns=['Image'])
@@ -137,11 +144,13 @@ if __name__=="__main__":
     x_test = prepareImages(test_data, test_data.shape[0], "train")
     x_test = x_test/255.0
 
-    my_model.save('data/model_VGG.h5')
-    with open("data/training_history_VGG.pkl", 'wb+') as f:
-        pickle.dump(history.history, f)
+    # to save model uncomment the code below
 
-    predictions = my_model.predict(np.array(x_test))
+    # my_model.save('data/model_VGG.h5')
+    # with open("data/training_history_VGG.pkl", 'wb+') as f:
+    #     pickle.dump(history.history, f)
+
+    predictions = model.predict(np.array(x_test))
 
     np.save("data/Predictions_VGG.npy", predictions)
     for i, pred in enumerate(predictions):
