@@ -56,7 +56,7 @@ if __name__=="__main__":
     label_encoder = LabelEncoder()
 
     y_train = label_encoder.fit_transform(y_train)
-    np.save("data/label_id_VGG.npy", y_train)
+    # np.save("data/label_id_VGG.npy", y_train)
 
     y_train = to_categorical(y_train, num_classes = 805)
 
@@ -152,8 +152,8 @@ if __name__=="__main__":
 
     predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions_VGG.npy", predictions)
+    np.save("data/Predictions_VGG.npy", predictions)# save the raw predicted probabilities
     for i, pred in enumerate(predictions):
         test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
     
-    test_data.to_csv("data/Predicted_labels_VGG.csv", index=False)
+    test_data.to_csv("data/Predicted_labels_VGG.csv", index=False)# save output csv file
