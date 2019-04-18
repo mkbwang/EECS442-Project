@@ -29,7 +29,7 @@ def prepareImages(train, shape, path):
         # print(img.shape)
         x = image.img_to_array(img)
         x = preprocess_input(x)
-        x_train[count] = x
+        x_train[count] = np.copy(x/255.0)
         if (count%500 == 0):
             print("Processing image: ", count+1, ", ", fig)
         count += 1
@@ -44,9 +44,9 @@ if __name__=="__main__":
     train = pd.read_csv('subset_train.csv')
     # imgnames = train['Image'].tolist()
 
-    x_train = prepareImages(train, train.shape[0], "train")
+    x_train = prepareImages(train, train.shape[0], "crop_train")
     # x_train = np.load('data/train_processed.npy')
-    x_train = x_train/255.0
+    # x_train = x_train/255.0
     
     X_train = train.drop(labels=['Id'], axis=1)
     y_train = train["Id"]
@@ -56,24 +56,35 @@ if __name__=="__main__":
     label_encoder = LabelEncoder()
 
     y_train = label_encoder.fit_transform(y_train)
-    # np.save("data/label_id_VGG.npy", y_train)
+    # np.save("data/label_id_total.npy", y_train)
 
     y_train = to_categorical(y_train, num_classes = 805)
 
-    # Introduce data augmentation
-    # datagen = ImageDataGenerator(
-    #     featurewise_center=False,  # set input mean to 0 over the dataset
-    #     samplewise_center=False,  # set each sample mean to 0
-    #     featurewise_std_normalization=False,  # divide inputs by std of the dataset
-    #     samplewise_std_normalization=False,  # divide each input by its std
-    #     zca_whitening=False,  # apply ZCA whitening
-    #     rotation_range=10,  # randomly rotate images in the range (degrees, 0 to 180)
-    #     zoom_range = 0.1, # Randomly zoom image 
-    #     width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
-    #     height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
-    #     horizontal_flip=False,  # randomly flip images
-    #     vertical_flip=False)  # randomly flip images
-    # datagen.fit(x_train)
+
+    # load test images and their labels
+    test = pd.read_csv('subset_test.csv')
+
+    test_data = pd.DataFrame(list(test['Image']), columns=['Image'])
+    test_data['Id'] = ''
+
+    x_test = prepareImages(test_data, test_data.shape[0], "crop_train")
+    y_test = label_encoder.transform(test['Id'])
+    y_test = to_categorical(y_test, num_classes=805)
+
+    # Introduce data augmentation, imgaug
+    datagen = ImageDataGenerator(
+        featurewise_center=False,  # set input mean to 0 over the dataset
+        samplewise_center=False,  # set each sample mean to 0
+        featurewise_std_normalization=False,  # divide inputs by std of the dataset
+        samplewise_std_normalization=False,  # divide each input by its std
+        zca_whitening=False,  # apply ZCA whitening
+        rotation_range=10,  # randomly rotate images in the range (degrees, 0 to 180)
+        zoom_range = 0.1, # Randomly zoom image 
+        width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+        height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+        horizontal_flip=False,  # randomly flip images
+        vertical_flip=False)  # randomly flip images
+    datagen.fit(x_train)
 
     # if you want to use VGG, uncomment the code below
     # model_vgg16_conv = VGG16(weights='imagenet', include_top=False)
@@ -120,40 +131,34 @@ if __name__=="__main__":
     # # compile model
     model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
-    epochs = 40  # for better result increase the epochs
+    epochs = 100  # for better result increase the epochs
     batch_size = 150
 
     # model = load_model('data/model_0.h5')
 
     # Fit the neural net (without data augmentation)
-    history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2, callbacks=[learning_rate_reduction])
+    # history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2, callbacks=[learning_rate_reduction],validation_data=(X_test, Y_test))
     
     # fit the neural net with data augmentation
-    # history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
-    #                           epochs=100, verbose = 2, 
-    #                           steps_per_epoch=x_train.shape[0] // batch_size,
-    #                           callbacks=[learning_rate_reduction])
+    history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
+                              epochs=100, verbose = 2, 
+                              steps_per_epoch=x_train.shape[0] // batch_size,
+                              callbacks=[learning_rate_reduction],
+                              validation_data=(x_test, y_test))
 
     # Check test accuracy
-    # load test images and their labels
-    test = pd.read_csv('subset_test.csv')
-
-    test_data = pd.DataFrame(list(test['Image']), columns=['Image'])
-    test_data['Id'] = ''
-
-    x_test = prepareImages(test_data, test_data.shape[0], "train")
-    x_test = x_test/255.0
+    
 
     # to save model uncomment the code below
 
-    model.save('data/model_nocrop_1.h5')
-    with open("data/training_history_nocrop_1.pkl", 'wb+') as f:
+    model.save('data/model_crop_aug.h5')
+    with open("data/training_history_crop_aug.pkl", 'wb+') as f:
         pickle.dump(history.history, f)
 
     predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions_nocrop_1.npy", predictions)# save the raw predicted probabilities
+    np.save("data/Predictions_crop_aug.npy", predictions)# save the raw predicted probabilities
     for i, pred in enumerate(predictions):
         test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
     
-    test_data.to_csv("data/Predicted_labels_nocrop_1.csv", index=False)# save output csv file
+    test_data.to_csv("data/Predicted_labels_crop_aug.csv", index=False)# save output csv file
