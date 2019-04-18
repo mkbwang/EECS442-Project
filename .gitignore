@@ -8,6 +8,8 @@ test/
 .~lock.humpback-whale-identification-publicleaderboard.csv#
 .~lock.train.csv#
 data/
+*.pptx
+*.png
 
 
 

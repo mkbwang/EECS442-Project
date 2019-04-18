@@ -120,8 +120,8 @@ if __name__=="__main__":
     # # compile model
     model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
-    epochs = 100  # for better result increase the epochs
-    batch_size = 300
+    epochs = 40  # for better result increase the epochs
+    batch_size = 150
 
     # model = load_model('data/model_0.h5')
 
@@ -146,14 +146,14 @@ if __name__=="__main__":
 
     # to save model uncomment the code below
 
-    # my_model.save('data/model_VGG.h5')
-    # with open("data/training_history_VGG.pkl", 'wb+') as f:
-    #     pickle.dump(history.history, f)
+    model.save('data/model_nocrop_1.h5')
+    with open("data/training_history_nocrop_1.pkl", 'wb+') as f:
+        pickle.dump(history.history, f)
 
     predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions.npy", predictions)# save the raw predicted probabilities
+    np.save("data/Predictions_nocrop_1.npy", predictions)# save the raw predicted probabilities
     for i, pred in enumerate(predictions):
         test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
     
-    test_data.to_csv("data/Predicted_labels.csv", index=False)# save output csv file
+    test_data.to_csv("data/Predicted_labels_nocrop_1.csv", index=False)# save output csv file
