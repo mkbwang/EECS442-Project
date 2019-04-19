@@ -47,15 +47,15 @@ if __name__=="__main__":
     newwhale = pd.read_csv("sample_submission.csv")
     x_newwhale = prepareImages(newwhale, newwhale.shape[0], "crop_test")
     x_newwhale /= 255.0
-    model = load_model('data/model_crop.h5')
+    model = load_model('data/model_crop_aug.h5')
     predictions = model.predict(np.array(x_newwhale))
     np.save("data/test_scores.npy", predictions)
     for i, pred in enumerate(predictions):
         scores = pred[pred.argsort()[-5:]]
-        newwhale_location = np.where(scores<0.05)[0]
+        newwhale_location = np.where(scores<0.1)[0]
         candidates = label_encoder.inverse_transform(pred.argsort()[-5:][::-1])
         if len(newwhale_location)>0:
             candidates = np.insert(candidates, 4-np.amax(newwhale_location), 'new_whale')
             candidates = candidates[:-1]        
         newwhale.loc[i, 'Id'] = ' '.join(candidates)
-    newwhale.to_csv("data/test_prediction_1.csv", index=False)
+    newwhale.to_csv("data/test_prediction_2.csv", index=False)

@@ -40,8 +40,8 @@ def prepareImages(train, shape, path):
 if __name__=="__main__":
 
     newwhale = pd.read_csv("subset_newwhale.csv")
-    x_newwhale = prepareImages(newwhale, newwhale.shape[0], "train")
+    x_newwhale = prepareImages(newwhale, newwhale.shape[0], "crop_train")
     x_newwhale /= 255.0
-    model = load_model('data/model_crop.h5')
+    model = load_model('data/model_crop_aug.h5')
     predictions = model.predict(np.array(x_newwhale))
-    np.save("data/newwhales_scores.npy", predictions)
+    np.save("data/newwhales_scores_crop_aug.npy", predictions)

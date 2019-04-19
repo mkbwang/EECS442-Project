@@ -41,35 +41,38 @@ def prepareImages(train, shape, path):
 if __name__=="__main__":
 
     # load training images and their ids
-    train = pd.read_csv('subset_train.csv')
+    train = pd.read_csv('train_withid.csv')
     # imgnames = train['Image'].tolist()
 
     x_train = prepareImages(train, train.shape[0], "crop_train")
     # x_train = np.load('data/train_processed.npy')
     # x_train = x_train/255.0
     
-    X_train = train.drop(labels=['Id'], axis=1)
+    # X_train = train.drop(labels=['Id'], axis=1)
     y_train = train["Id"]
 
     # np.save('data/train_processed_224.npy', x_train)
 
     label_encoder = LabelEncoder()
-
     y_train = label_encoder.fit_transform(y_train)
     # np.save("data/label_id_total.npy", y_train)
+    y_train = to_categorical(y_train, num_classes = 5004)
 
-    y_train = to_categorical(y_train, num_classes = 805)
+    # validation data
+    validation = pd.read_csv('train_validation.csv') 
+    x_valid = prepareImages(validation, validation.shape[0], "crop_train")
+    y_valid = validation['Id']
+    y_valid = label_encoder.transform(y_valid)
+    y_valid = to_categorical(y_valid, num_classes = 5004)
 
 
     # load test images and their labels
-    test = pd.read_csv('subset_test.csv')
-
+    test = pd.read_csv('sample_submission.csv')
     test_data = pd.DataFrame(list(test['Image']), columns=['Image'])
     test_data['Id'] = ''
-
-    x_test = prepareImages(test_data, test_data.shape[0], "crop_train")
-    y_test = label_encoder.transform(test['Id'])
-    y_test = to_categorical(y_test, num_classes=805)
+    x_test = prepareImages(test_data, test_data.shape[0], "crop_test")
+    # y_test = label_encoder.transform(test['Id'])
+    # y_test = to_categorical(y_test, num_classes=5004)
 
     # Introduce data augmentation, imgaug
     datagen = ImageDataGenerator(
@@ -84,6 +87,7 @@ if __name__=="__main__":
         height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
         horizontal_flip=False,  # randomly flip images
         vertical_flip=False)  # randomly flip images
+    print('Start data augmentation')
     datagen.fit(x_train)
 
     # if you want to use VGG, uncomment the code below
@@ -122,8 +126,8 @@ if __name__=="__main__":
 
     optimizer = Adam(lr = 0.001, beta_1 = 0.9, beta_2 = 0.999)
 
-    learning_rate_reduction = ReduceLROnPlateau(monitor='acc', 
-                                            patience=1, 
+    learning_rate_reduction = ReduceLROnPlateau(monitor='val_acc', 
+                                            patience=3, 
                                             verbose=1, 
                                             factor=0.5, 
                                             min_lr=0.00001)
@@ -131,8 +135,8 @@ if __name__=="__main__":
     # # compile model
     model.compile(optimizer = optimizer, loss = "categorical_crossentropy", metrics=["accuracy"])
 
-    epochs = 75  # for better result increase the epochs
-    batch_size = 200
+    epochs = 100  # for better result increase the epochs
+    batch_size = 300
 
     # model = load_model('data/model_0.h5')
 
@@ -141,24 +145,29 @@ if __name__=="__main__":
     
     # fit the neural net with data augmentation
     history = model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
-                              epochs=75, verbose = 2, 
+                              epochs=100, verbose = 2, 
                               steps_per_epoch=x_train.shape[0] // batch_size,
                               callbacks=[learning_rate_reduction],
-                              validation_data=(x_test, y_test))
+                              validation_data=(x_valid, y_valid))
 
     # Check test accuracy
     
 
     # to save model uncomment the code below
 
-    model.save('data/model_crop_aug_1.h5')
-    with open("data/training_history_crop_aug_1.pkl", 'wb+') as f:
+    model.save('data/model_total_crop_aug.h5')
+    with open("data/history_total_crop_aug.pkl", 'wb+') as f:
         pickle.dump(history.history, f)
 
     predictions = model.predict(np.array(x_test))
 
-    np.save("data/Predictions_crop_aug_1.npy", predictions)# save the raw predicted probabilities
+    np.save("data/Predictions_total_crop_aug.npy", predictions)# save the raw predicted probabilities
     for i, pred in enumerate(predictions):
-        test_data.loc[i, 'Id'] = ' '.join(label_encoder.inverse_transform(pred.argsort()[-5:][::-1]))
-    
-    test_data.to_csv("data/Predicted_labels_crop_aug_1.csv", index=False)# save output csv file
+        scores = pred[pred.argsort()[-5:]]
+        newwhale_location = np.where(scores<0.05)[0]
+        candidates = label_encoder.inverse_transform(pred.argsort()[-5:][::-1])
+        if len(newwhale_location)>0:
+            candidates = np.insert(candidates, 4-np.amax(newwhale_location), 'new_whale')
+            candidates = candidates[:-1]        
+        test_data.loc[i, 'Id'] = ' '.join(candidates)
+    test_data.to_csv("data/labels_total_crop_aug.csv", index=False)# save output csv file
